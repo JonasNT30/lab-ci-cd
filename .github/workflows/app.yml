@@ -126,18 +126,14 @@ jobs:
 
       - name: Terraform | Set up statefile S3 Bucket for Backend
         run: |
-            echo "terraform {
-              backend \"s3\" {
-                bucket   = \"${{ secrets.AWS_ACCOUNT_ID }}-tfstate\"
-                key      = \"app-${{ env.ENVIRONMENT }}.tfstate\"
-                region   = \"${{ vars.AWS_REGION }}\"
-              }
-            }" >> provider.tf
-            cat provider.tf
-        working-directory: ./app/deploy
-
-      - name: Terraform | Initialize backend
-        run: terraform init
+          echo "terraform {
+            backend \"s3\" {
+              bucket   = \"${{ secrets.AWS_ACCOUNT_ID }}-tfstate\"
+              key      = \"app-${{ env.ENVIRONMENT }}.tfstate\"
+              region   = \"${{ vars.AWS_REGION }}\"
+            }
+          }" >> provider.tf
+          cat provider.tf
         working-directory: ./app/deploy
 
       - name: Terraform | Check Syntax IaC Code
