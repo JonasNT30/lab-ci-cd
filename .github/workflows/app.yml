@@ -89,7 +89,6 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: app
 
     steps:
       - name: Download do Repositório
@@ -109,7 +108,7 @@ jobs:
         id: task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
-          task-definition: ./app/deploy/ecs-task-definition.json
+          task-definition: app/deploy/ecs-task-definition.json
           container-name: ci-cd-app
           image: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ needs.Build.outputs.image_tag }}
 
