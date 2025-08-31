@@ -111,7 +111,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
-      - name: TFlint | Run TFLint
+      - name: TFlint | Run TFlint
         run: tflint -f compact
 
       - name: TFSec | Security Checks
@@ -121,6 +121,9 @@ jobs:
 
       - name: Terraform | Plan
         run: terraform plan -out tfplan.binary
+        env:
+          TF_LOG: DEBUG
+          TF_VAR_cluster_name: ${{ env.ECS_CLUSTER }}
 
       - name: Terraform | Show to json file
         run: terraform show -json tfplan.binary > plan.json
@@ -132,3 +135,5 @@ jobs:
       - name: Terraform Creating and Update
         if: env.DESTROY != 'true'
         run: terraform apply -auto-approve -input=false
+        env:
+          TF_VAR_cluster_name: ${{ env.ECS_CLUSTER }}
