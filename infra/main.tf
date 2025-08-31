@@ -6,3 +6,5 @@ resource "aws_ecs_cluster" "this" {
     value = "enabled"
   }
 }
+
+// Final fix
