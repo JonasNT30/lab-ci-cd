@@ -1,7 +1,7 @@
 # data.tf
 data "aws_security_groups" "this" {
   filter {
-    name   = "group-name"
+    name   = "group-id"
     values = [var.security_group_name]
   }
 }
