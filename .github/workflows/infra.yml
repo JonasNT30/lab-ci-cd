@@ -106,7 +106,8 @@ jobs:
           soft_fail: true
 
       - name: Terraform | Plan
-        run: terraform plan -out tfplan.binary
+        run: terraform plan -out tfplan.binary  -no-color -input=false -lock=false -detailed-exitcode -compact-warnings -lock-timeout=10m -refresh=true -var-file=variables.tfvars
+        working-directory: ./infra
 
       - name: Terraform | Show to json file
         run: terraform show -json tfplan.binary > plan.json
