@@ -50,7 +50,7 @@ jobs:
           python-version: '3.10'
 
       - name: Install Requirements
-        run:  pip install flask
+        run: pip install flask
 
       - name: Unit Test
         run: python -m unittest -v test
@@ -128,14 +128,14 @@ jobs:
 
       - name: Terraform | Set up statefile S3 Bucket for Backend
         run: |
-            echo "terraform {
-              backend \"s3\" {
-                bucket   = \"${{ secrets.AWS_ACCOUNT_ID }}-tfstate\"
-                key      = \"app-${{ env.ENVIRONMENT }}.tfstate\"
-                region   = \"${{ vars.AWS_REGION }}\"
-              }
-            }" >> provider.tf
-            cat provider.tf
+          echo "terraform {
+            backend \"s3\" {
+              bucket  = \"${{ secrets.AWS_ACCOUNT_ID }}-tfstate\"
+              key     = \"app-${{ env.ENVIRONMENT }}.tfstate\"
+              region  = \"${{ vars.AWS_REGION }}\"
+            }
+          }" >> provider.tf
+          cat provider.tf
         working-directory: ./app/deploy
 
       - name: Terraform | Initialize backend
@@ -167,7 +167,7 @@ jobs:
         env:
           TF_VAR_cluster_name: ${{ env.ECS_CLUSTER }}
           TF_VAR_ecs_service_name: ${{ env.ECS_SERVICE }}
-          TF_VAR_task_definition_name: ${{ steps.task-def.outputs.task-definition }}
+          TF_VAR_task_definition_name: ${{ steps.register-task-def.outputs.task-definition-arn }} # <-- AQUI ESTÁ A ÚLTIMA CORREÇÃO!
           TF_VAR_vpc_id: "vpc-0ab774b054094df65"
 
       - name: Deploy App in Amazon ECS
