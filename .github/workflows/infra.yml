@@ -71,15 +71,20 @@ jobs:
           }
           EOF
 
-      - name: Debug Variables
-        run: echo "The value of TF_VAR_ecs_service_name is ${{ env.ECS_SERVICE }}"
-        env:
-          TF_VAR_ecs_service_name: ${{ env.ECS_SERVICE }}
+      - name: Terraform | Create temporary tfvars file
+        run: |
+          cat <<EOF > terraform.tfvars
+          cluster_name = "${{ env.ECS_CLUSTER }}"
+          vpc_id = "vpc-0ab774b054094df65"
+          subnets_id = [
+            "subnet-013d682169102afe0",
+            "subnet-076059ee3f9904a0d",
+            "subnet-07ed8aa5282321a33"
+          ]
+          EOF
 
       - name: Terraform | Initialize backend
         run: terraform init
-        env:
-          TF_VAR_ecs_service_name: ${{ env.ECS_SERVICE }}
 
       - name: Terraform | Format code
         run: terraform fmt
@@ -106,7 +111,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
-      - name: TFlint | Run TFlint
+      - name: TFlint | Run TFLint
         run: tflint -f compact
 
       - name: TFSec | Security Checks
@@ -116,8 +121,6 @@ jobs:
 
       - name: Terraform | Plan
         run: terraform plan -out tfplan.binary
-        env:
-          TF_VAR_ecs_service_name: ${{ env.ECS_SERVICE }}
 
       - name: Terraform | Show to json file
         run: terraform show -json tfplan.binary > plan.json
@@ -129,5 +132,3 @@ jobs:
       - name: Terraform Creating and Update
         if: env.DESTROY != 'true'
         run: terraform apply -auto-approve -input=false
-        env:
-          TF_VAR_ecs_service_name: ${{ env.ECS_SERVICE }}
