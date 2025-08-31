@@ -73,4 +73,20 @@ resource "aws_vpc_security_group_ingress_rule" "web" {
   description       = "Acesso Web"
 }
 
-resource "aws_vpc
+resource "aws_vpc_security_group_ingress_rule" "container" {
+  security_group_id = aws_security_group.allow_inbound.id
+  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = 8000
+  ip_protocol       = "tcp"
+  to_port           = 8000
+  description       = "Acesso Web"
+}
+
+# Saídas
+output "load_balancer_arn" {
+  value = aws_lb_target_group.this.arn
+}
+
+output "nlb_dns_name" {
+  value = format("http://%s", aws_lb.this.dns_name)
+}
