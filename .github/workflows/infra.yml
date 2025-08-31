@@ -1,4 +1,4 @@
-name: 'Deploy Infra'
+name: 'Unified Deploy'
 
 on:
   push:
@@ -7,14 +7,17 @@ on:
   workflow_dispatch:
 
 env:
+  DESTROY: false
   TF_VERSION: 1.10.5
   TF_LINT_VERSION: v0.52.0
-  DESTROY: false
-  ENVIRONMENT: prod
+  IMAGE_NAME: ci-cd-app
+  ECS_SERVICE: app-service
   ECS_CLUSTER: app-prod-cluster
+  APP_VERSION: 1.0.0
+  ENVIRONMENT: prod
 
 jobs:
-  terraform:
+  infra:
     name: 'Deploy Infra'
     runs-on: ubuntu-latest
     defaults:
@@ -72,6 +75,7 @@ jobs:
 
       - name: Debug Variable
         run: echo "The value of TF_VAR_cluster_name is ${{ env.ECS_CLUSTER }}"
+        working-directory: infra
         env:
           TF_VAR_cluster_name: ${{ env.ECS_CLUSTER }}
 
@@ -115,7 +119,6 @@ jobs:
 
       - name: Terraform | Plan
         run: terraform plan -out tfplan.binary
-        working-directory: infra
         env:
           TF_VAR_cluster_name: ${{ env.ECS_CLUSTER }}
 
@@ -131,3 +134,78 @@ jobs:
         run: terraform apply -auto-approve -input=false
         env:
           TF_VAR_cluster_name: ${{ env.ECS_CLUSTER }}
+
+  app:
+    name: 'Deploy App'
+    runs-on: ubuntu-latest
+    needs: infra
+    outputs:
+      image_tag: ${{ steps.set_tag.outputs.image_tag }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: app
+
+    steps:
+      - name: Download do Repositório
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set TAG_APP with SHA
+        run: |
+          echo "TAG_APP=v${{ env.APP_VERSION }}-$(echo $GITHUB_SHA | cut -c1-7)" >> "$GITHUB_ENV"
+
+      - name: Set TAG_APP Output
+        id: set_tag
+        run: echo "image_tag=$TAG_APP" >> $GITHUB_OUTPUT
+
+      - name: Show image TAG
+        run: |
+          echo "Image TAG" $TAG_APP
+          echo "Image TAG" ${{ steps.set_tag.outputs.image_tag }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Requirements
+        run:  pip install flask
+
+      - name: Unit Test
+        run: python -m unittest -v test
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build an image from Dockerfile
+        env:
+          DOCKER_BUILDKIT: 1
+        run: |
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ env.TAG_APP }} .
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: '${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ env.TAG_APP }}'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL'
+
+      - name: Push image
+        run: |
+          docker image push ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ env.TAG_APP }}
+
+      - name: Deploy App in Amazon ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ./app/deploy/ecs-task-definition.json
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
