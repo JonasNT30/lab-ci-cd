@@ -70,14 +70,15 @@ jobs:
           }
           EOF
 
-      - name: Debug Variables
+      - name: Debug Variable
         run: echo "The value of TF_VAR_cluster_name is ${{ env.ECS_CLUSTER }}"
-        working-directory: infra
         env:
           TF_VAR_cluster_name: ${{ env.ECS_CLUSTER }}
 
       - name: Terraform | Initialize backend
         run: terraform init
+        env:
+          TF_VAR_cluster_name: ${{ env.ECS_CLUSTER }}
 
       - name: Terraform | Format code
         run: terraform fmt
