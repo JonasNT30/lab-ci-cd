@@ -153,6 +153,7 @@ jobs:
           TF_VAR_cluster_name: ${{ env.ECS_CLUSTER }}
           TF_VAR_ecs_service_name: ${{ env.ECS_SERVICE }}
           TF_VAR_task_definition_name: ${{ steps.task-def.outputs.task-definition }}
+          TF_VAR_vpc_id: "vpc-0ab774b054094df65"
 
       - name: Terraform Destroy
         if: env.DESTROY == 'true'
@@ -167,6 +168,7 @@ jobs:
           TF_VAR_cluster_name: ${{ env.ECS_CLUSTER }}
           TF_VAR_ecs_service_name: ${{ env.ECS_SERVICE }}
           TF_VAR_task_definition_name: ${{ steps.task-def.outputs.task-definition }}
+          TF_VAR_vpc_id: "vpc-0ab774b054094df65"
 
       - name: Deploy App in Amazon ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
