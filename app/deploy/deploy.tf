@@ -54,10 +54,6 @@ variable "container_name" {
   default = "ci-cd-app"
 }
 
-variable "ecs_service_name" {
-  type = string
-}
-
 variable "task_definition_name" {
   type = string
 }
