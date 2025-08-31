@@ -1,13 +1,11 @@
 variable "cluster_name" {
   description = "Nome do cluster ECS"
   type        = string
-  default     = "app-prod-cluster"
 }
 
-variable "desired_count" {
-  description = "desired tasks"
-  type        = number
-  default     = 3
+variable "ecs_service_name" {
+  description = "Nome do serviço ECS"
+  type        = string
 }
 
 variable "subnets_id" {
@@ -15,8 +13,7 @@ variable "subnets_id" {
   type        = list(string)
 }
 
-variable "lb_name" {
-  description = "Load Balancer Name"
+variable "vpc_id" {
+  description = "VPC ID"
   type        = string
-  default     = "app-prod-nlb"
 }
