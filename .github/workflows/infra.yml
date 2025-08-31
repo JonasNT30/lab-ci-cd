@@ -10,6 +10,7 @@ env:
   TF_LINT_VERSION: v0.52.0
   DESTROY: false
   ENVIRONMENT: prod
+  ECS_CLUSTER: app-prod-cluster  # Certifique-se de que esta variável está definida aqui
 
 jobs:
   terraform:
@@ -105,11 +106,17 @@ jobs:
         with:
           soft_fail: true
 
+      - name: Debug Variable
+        run: echo "The value of TF_VAR_ecs_cluster_name is $TF_VAR_ecs_cluster_name"
+        working-directory: ./infra
+        env:
+          TF_VAR_ecs_cluster_name: ${{ env.ECS_CLUSTER }}
+
       - name: Terraform | Plan
         run: terraform plan -out tfplan.binary
-        working-directory: infra
+        working-directory: ./infra
         env:
-        TF_VAR_ecs_cluster_name: ${{ env.ECS_CLUSTER }}
+          TF_VAR_ecs_cluster_name: ${{ env.ECS_CLUSTER }}
 
       - name: Terraform | Show to json file
         run: terraform show -json tfplan.binary > plan.json
