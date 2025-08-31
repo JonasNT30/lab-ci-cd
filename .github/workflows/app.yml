@@ -151,6 +151,7 @@ jobs:
         working-directory: ./app/deploy
         env:
           TF_VAR_cluster_name: ${{ env.ECS_CLUSTER }}
+          TF_VAR_ecs_service_name: ${{ env.ECS_SERVICE }}
 
       - name: Terraform Destroy
         if: env.DESTROY == 'true'
@@ -163,6 +164,7 @@ jobs:
         working-directory: ./app/deploy
         env:
           TF_VAR_cluster_name: ${{ env.ECS_CLUSTER }}
+          TF_VAR_ecs_service_name: ${{ env.ECS_SERVICE }}
 
       - name: Deploy App in Amazon ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
