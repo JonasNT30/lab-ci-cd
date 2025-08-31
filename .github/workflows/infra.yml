@@ -1,211 +1,119 @@
-name: 'Unified Deploy'
+name: 'Deploy Infra'
 
 on:
   push:
     branches:
       - infra
-  workflow_dispatch:
-
 env:
-  DESTROY: false
   TF_VERSION: 1.10.5
   TF_LINT_VERSION: v0.52.0
-  IMAGE_NAME: ci-cd-app
-  ECS_SERVICE: app-service
-  ECS_CLUSTER: app-prod-cluster
-  APP_VERSION: 1.0.0
+  DESTROY: false
   ENVIRONMENT: prod
-
 jobs:
-  infra:
+  terraform:
     name: 'Deploy Infra'
     runs-on: ubuntu-latest
+
     defaults:
       run:
         shell: bash
         working-directory: infra
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
 
-      - name: AWS | Configure credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
-          aws-region: ${{ vars.AWS_REGION }}
+    - name: AWS | Configure credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+        aws-region: ${{ vars.AWS_REGION }}
 
-      - name: Terraform-docs | Generate documentation
-        uses: terraform-docs/gh-actions@v1.3.0
-        with:
-          working-dir: ./infra
-          output-file: README.md
-          output-method: inject
-          git-push: "true"
+    - name: Terraform-docs | Generate documentation
+      uses: terraform-docs/gh-actions@v1.3.0
+      with:
+        working-dir: ./infra
+        output-file: README.md
+        output-method: inject
+        git-push: "true"
 
-      - name: Terraform | Check required version
-        run: |
-          if [ -f versions.tf ]; then
+    - name: Terraform | Check required version
+      run: |
+        if [ -f versions.tf ];
+          then
             echo "TF_VERSION=$(grep required_version versions.tf | sed 's/"//g' | awk '{ print $3 }')" >> $GITHUB_ENV
           else
             echo "Not set required_version in versions.tf, using default version in variable TF_VERSION in file .github/workflows/infra.yml"
-            echo "TF_VERSION=${{ env.TF_VERSION }}" >> $GITHUB_ENV
-          fi
+            echo "TF_VERSION="${{ env.TF_VERSION }}"" >> $GITHUB_ENV
+        fi
 
-      - name: Terraform | Setup
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
+    - name: Terraform | Setup
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ env.TF_VERSION }}
 
-      - name: Terraform | Show version
-        run: terraform --version
+    - name: Terraform | Show version
+      run: terraform --version
 
-      - name: Terraform | Set up statefile S3 Bucket for Backend
-        run: |
-          cat <<EOF > provider.tf
-          terraform {
-            backend "s3" {
-              bucket = "${{ vars.AWS_ACCOUNT_ID }}-tfstate"
-              key    = "infra-${{ env.ENVIRONMENT }}.tfstate"
-              region = "${{ vars.AWS_REGION }}"
+    - name: Terraform | Set up statefile S3 Bucket for Backend
+      run: |
+          echo "terraform {
+            backend \"s3\" {
+              bucket   = \"${{ secrets.AWS_ACCOUNT_ID }}-tfstate\"
+              key      = \"infra-${{ env.ENVIRONMENT }}.tfstate\"
+              region   = \"${{ vars.AWS_REGION }}\"
             }
-          }
-          EOF
+          }" >> provider.tf
+          cat provider.tf
 
-      - name: Debug Variable
-        run: echo "The value of TF_VAR_cluster_name is ${{ env.ECS_CLUSTER }}"
-        working-directory: infra
-        env:
-          TF_VAR_cluster_name: ${{ env.ECS_CLUSTER }}
+    - name: Terraform | Initialize backend
+      run: terraform init
 
-      - name: Terraform | Initialize backend
-        run: terraform init
-        env:
-          TF_VAR_cluster_name: ${{ env.ECS_CLUSTER }}
+    - name: Terraform | Format code
+      run: terraform fmt
 
-      - name: Terraform | Format code
-        run: terraform fmt
+    - name: Terraform | Check Syntax IaC Code
+      run: terraform validate
 
-      - name: Terraform | Check Syntax IaC Code
-        run: terraform validate
+    - name: TFlint | Cache plugin directory
+      uses: actions/cache@v4
+      with:
+        path: ~/.tflint.d/plugins
+        key: ${{ matrix.os }}-tflint-${{ hashFiles('.tflint.hcl') }}
 
-      - name: TFlint | Cache plugin directory
-        uses: actions/cache@v4
-        with:
-          path: ~/.tflint.d/plugins
-          key: ${{ matrix.os }}-tflint-${{ hashFiles('.tflint.hcl') }}
+    - name: TFlint | Setup TFLint
+      uses: terraform-linters/setup-tflint@v4
+      with:
+        tflint_version: ${{ env.TF_LINT_VERSION }}
 
-      - name: TFlint | Setup TFLint
-        uses: terraform-linters/setup-tflint@v4
-        with:
-          tflint_version: ${{ env.TF_LINT_VERSION }}
+    - name: TFlint | Show version
+      run: tflint --version
 
-      - name: TFlint | Show version
-        run: tflint --version
+    - name: TFlint | Init TFLint
+      run: tflint --init
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
 
-      - name: TFlint | Init TFLint
-        run: tflint --init
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
+    - name: TFlint | Run TFLint
+      run: tflint -f compact
 
-      - name: TFlint | Run TFlint
-        run: tflint -f compact
+    - name: TFSec | Security Checks
+      uses: aquasecurity/tfsec-action@v1.0.0
+      with:
+        soft_fail: true
 
-      - name: TFSec | Security Checks
-        uses: aquasecurity/tfsec-action@v1.0.0
-        with:
-          soft_fail: true
+    - name: Terraform | Plan
+      run: terraform plan -out tfplan.binary
 
-      - name: Terraform | Plan
-        run: terraform plan -out tfplan.binary
-        env:
-          TF_VAR_cluster_name: ${{ env.ECS_CLUSTER }}
+    - name: Terraform | Show to json file
+      run: terraform show -json tfplan.binary > plan.json
 
-      - name: Terraform | Show to json file
-        run: terraform show -json tfplan.binary > plan.json
+    - name: Terraform Destroy
+      if: env.DESTROY == 'true'
+      run: terraform destroy -auto-approve -input=false
 
-      - name: Terraform Destroy
-        if: env.DESTROY == 'true'
-        run: terraform destroy -auto-approve -input=false
-
-      - name: Terraform Creating and Update
-        if: env.DESTROY != 'true'
-        run: terraform apply -auto-approve -input=false
-        env:
-          TF_VAR_cluster_name: ${{ env.ECS_CLUSTER }}
-
-  app:
-    name: 'Deploy App'
-    runs-on: ubuntu-latest
-    needs: infra
-    outputs:
-      image_tag: ${{ steps.set_tag.outputs.image_tag }}
-    defaults:
-      run:
-        shell: bash
-        working-directory: app
-
-    steps:
-      - name: Download do Repositório
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set TAG_APP with SHA
-        run: |
-          echo "TAG_APP=v${{ env.APP_VERSION }}-$(echo $GITHUB_SHA | cut -c1-7)" >> "$GITHUB_ENV"
-
-      - name: Set TAG_APP Output
-        id: set_tag
-        run: echo "image_tag=$TAG_APP" >> $GITHUB_OUTPUT
-
-      - name: Show image TAG
-        run: |
-          echo "Image TAG" $TAG_APP
-          echo "Image TAG" ${{ steps.set_tag.outputs.image_tag }}
-
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-
-      - name: Install Requirements
-        run:  pip install flask
-
-      - name: Unit Test
-        run: python -m unittest -v test
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build an image from Dockerfile
-        env:
-          DOCKER_BUILDKIT: 1
-        run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ env.TAG_APP }} .
-
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: '${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ env.TAG_APP }}'
-          format: 'table'
-          exit-code: '1'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL'
-
-      - name: Push image
-        run: |
-          docker image push ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ env.TAG_APP }}
-
-      - name: Deploy App in Amazon ECS
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
-        with:
-          task-definition: ./app/deploy/ecs-task-definition.json
-          service: ${{ env.ECS_SERVICE }}
-          cluster: ${{ env.ECS_CLUSTER }}
-          wait-for-service-stability: true
+    - name: Terraform Creating and Update
+      if: env.DESTROY != 'true'
+      run: terraform apply -auto-approve -input=false
