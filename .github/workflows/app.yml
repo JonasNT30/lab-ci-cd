@@ -123,18 +123,18 @@ jobs:
         with:
           terraform_version: ${{ env.TF_VERSION }}
 
-- name: Terraform | Set up statefile S3 Bucket for Backend
-  run: |
-      cat <<EOF > provider.tf
-      terraform {
-        backend "s3" {
-          bucket = "${{ vars.AWS_ACCOUNT_ID }}-tfstate"
-          key    = "app-${{ env.ENVIRONMENT }}.tfstate"
-          region = "${{ vars.AWS_REGION }}"
-        }
-      }
-      EOF
-  working-directory: ./app/deploy
+      - name: Terraform | Set up statefile S3 Bucket for Backend
+        run: |
+          cat <<EOF > provider.tf
+          terraform {
+            backend "s3" {
+              bucket = "${{ vars.AWS_ACCOUNT_ID }}-tfstate"
+              key    = "app-${{ env.ENVIRONMENT }}.tfstate"
+              region = "${{ vars.AWS_REGION }}"
+            }
+          }
+          EOF
+        working-directory: ./app/deploy
 
       - name: Terraform | Initialize backend
         run: terraform init
