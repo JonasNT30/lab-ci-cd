@@ -117,6 +117,7 @@ jobs:
         working-directory: ./infra
         env:
           TF_VAR_ecs_cluster_name: ${{ env.ECS_CLUSTER }}
+          TF_LOG: DEBUG # <--- Adicione esta linha
 
       - name: Terraform | Show to json file
         run: terraform show -json tfplan.binary > plan.json
