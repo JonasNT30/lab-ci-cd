@@ -116,7 +116,7 @@ jobs:
           executionRoleArn: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/LabRole
 
       - name: Register Task Definition
-        id: task-definition
+        id: register-task-def
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
           task-definition: ${{ steps.task-def.outputs.task-definition }}
@@ -152,7 +152,7 @@ jobs:
         env:
           TF_VAR_cluster_name: ${{ env.ECS_CLUSTER }}
           TF_VAR_ecs_service_name: ${{ env.ECS_SERVICE }}
-          TF_VAR_task_definition_name: ${{ steps.task-def.outputs.task-definition }}
+          TF_VAR_task_definition_name: ${{ steps.register-task-def.outputs.task-definition-arn }}
           TF_VAR_vpc_id: "vpc-0ab774b054094df65"
 
       - name: Terraform Destroy
