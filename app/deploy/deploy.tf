@@ -23,7 +23,7 @@ resource "aws_cloudwatch_log_group" "this" {
 
 resource "aws_ecs_service" "this" {
   name            = var.ecs_service_name
-  cluster         = var.ecs_cluster_name
+  cluster         = var.cluster_name
   task_definition = var.task_definition_name
   desired_count   = 3
   launch_type     = "FARGATE"
@@ -58,7 +58,7 @@ variable "ecs_service_name" {
   type = string
 }
 
-variable "ecs_cluster_name" {
+variable "cluster_name" {
   type = string
 }
 
