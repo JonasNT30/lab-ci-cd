@@ -113,8 +113,6 @@ jobs:
           task-definition: ./app/deploy/ecs-task-definition.json
           container-name: ${{ env.IMAGE_NAME }}
           image: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ needs.Build.outputs.image_tag }}
-          task-role-arn: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/LabRole
-          execution-role-arn: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/LabRole
 
       - name: Deploy App in Amazon ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
@@ -123,4 +121,3 @@ jobs:
           service: ${{ env.ECS_SERVICE }}
           cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
-          # Pequena alteração para acionar o deploy
