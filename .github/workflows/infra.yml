@@ -115,6 +115,7 @@ jobs:
 
       - name: Terraform | Plan
         run: terraform plan -out tfplan.binary
+        working-directory: infra
         env:
           TF_VAR_cluster_name: ${{ env.ECS_CLUSTER }}
 
